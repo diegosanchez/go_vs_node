@@ -1,14 +1,14 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"os"
+	"net/http"
 )
 
+// DB
 func connect() (*mgo.Collection, *mgo.Session) {
 	s, err := mgo.Dial("mongodb://127.0.0.1:27017")
 
@@ -29,23 +29,21 @@ func disconnect(s *mgo.Session) {
 }
 
 func main() {
-	var entry bson.M
 	col, s := connect()
-	err := nextEntry(col, &entry)
 
-	if err != nil {
-		panic(err)
-	}
+	http.HandleFunc("/bar", func(w http.ResponseWriter, r *http.Request) {
+		var entry bson.M
+		w.Header().Set("Content-Type", "application/json")
+		err := nextEntry(col, &entry)
 
-	bs, err := json.Marshal(entry)
+		if err != nil {
+			panic(err)
+		}
 
-	if err != nil {
-		panic(err)
-	}
+		bs, err := json.Marshal(entry)
+		w.Write(bs)
+	})
 
-	var out bytes.Buffer
-	json.Indent(&out, bs, "=", "\t")
-	out.WriteTo(os.Stdout)
-
+	http.ListenAndServe(":9000", nil)
 	disconnect(s)
 }
